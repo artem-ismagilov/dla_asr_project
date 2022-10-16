@@ -65,6 +65,8 @@ class Trainer(BaseTrainer):
         Move all necessary tensors to the HPU
         """
         for tensor_for_gpu in ["spectrogram", "text_encoded"]:
+            if tensor_for_gpu not in batch:
+                continue
             batch[tensor_for_gpu] = batch[tensor_for_gpu].to(device)
         return batch
 
@@ -89,7 +91,7 @@ class Trainer(BaseTrainer):
         for batch_idx, batch in enumerate(
                 tqdm(self.train_dataloader, desc="train", total=self.len_epoch)
         ):
-            if 'error' in batch:
+            if ("error" in batch) or ("spectrogram" not in batch) or ("text_encoded" not in batch):
                 print('Error while loading batch')
                 continue
 
