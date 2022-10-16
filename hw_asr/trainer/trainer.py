@@ -90,6 +90,7 @@ class Trainer(BaseTrainer):
                 tqdm(self.train_dataloader, desc="train", total=self.len_epoch)
         ):
             if 'error' in batch:
+                print('Error while loading batch')
                 continue
 
             try:
