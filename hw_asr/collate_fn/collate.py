@@ -30,6 +30,7 @@ def collate_fn(dataset_items: List[dict]):
         result_batch['text_encoded_length'] = torch.tensor([s['text_encoded'].shape[1] for s in dataset_items])
         result_batch['spectrogram_length'] = torch.tensor([s['spectrogram'].shape[2] for s in dataset_items])
     except:
+        result_batch['error'] = True
         print('Error in collate function!',)
 
     return result_batch
