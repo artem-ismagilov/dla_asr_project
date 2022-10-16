@@ -25,17 +25,16 @@ class ConvBlock(nn.Module):
         for conv in self.convs:
             x = conv(x)
 
-            if isinstance(conv, nn.Conv2d):
-                mask = torch.zeros(x.shape, device=x.device, dtype=torch.bool)
-                for i in range(x.shape[0]):
-                    l = seq_length[i].item()
-                    res = x.shape[-1] - l
-                    if res == 0:
-                        continue
+            mask = torch.zeros(x.shape, device=x.device, dtype=torch.bool)
+            for i in range(x.shape[0]):
+                l = seq_length[i].item()
+                res = x.shape[-1] - l
+                if res == 0:
+                    continue
 
-                    mask[i].narrow(-1, l, res).fill_(1)
+                mask[i].narrow(-1, l, res).fill_(1)
 
-                x.masked_fill(mask, 0)
+            x.masked_fill(mask, 0)
 
         x = x.view(x.shape[0], x.shape[1] * x.shape[2], -1).permute(2, 0, 1).contiguous()  # TxBxH
         return x

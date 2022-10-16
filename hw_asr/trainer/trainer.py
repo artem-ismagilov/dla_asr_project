@@ -84,45 +84,51 @@ class Trainer(BaseTrainer):
         self.model.train()
         self.train_metrics.reset()
         self.writer.add_scalar("epoch", epoch)
-        for batch_idx, batch in enumerate(
-                tqdm(self.train_dataloader, desc="train", total=self.len_epoch)
-        ):
-            try:
-                batch = self.process_batch(
-                    batch,
-                    is_train=True,
-                    metrics=self.train_metrics,
-                )
-            except RuntimeError as e:
-                if "out of memory" in str(e) and self.skip_oom:
-                    self.logger.warning("OOM on batch. Skipping batch.")
-                    for p in self.model.parameters():
-                        if p.grad is not None:
-                            del p.grad  # free some memory
-                    torch.cuda.empty_cache()
-                    continue
-                else:
-                    raise e
-            self.train_metrics.update("grad norm", self.get_grad_norm())
-            if batch_idx % self.log_step == 0:
-                self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
-                self.logger.debug(
-                    "Train Epoch: {} {} Loss: {:.6f}".format(
-                        epoch, self._progress(batch_idx), batch["loss"].item()
+        print('LR:', self.lr_scheduler.get_last_lr()[0])
+
+        try:
+            for batch_idx, batch in enumerate(
+                    tqdm(self.train_dataloader, desc="train", total=self.len_epoch)
+            ):
+                try:
+                    batch = self.process_batch(
+                        batch,
+                        is_train=True,
+                        metrics=self.train_metrics,
                     )
-                )
-                self.writer.add_scalar(
-                    "learning rate", self.lr_scheduler.get_last_lr()[0]
-                )
-                self._log_predictions(**batch)
-                self._log_spectrogram(batch["spectrogram"])
-                self._log_scalars(self.train_metrics)
-                # we don't want to reset train metrics at the start of every epoch
-                # because we are interested in recent train metrics
-                last_train_metrics = self.train_metrics.result()
-                self.train_metrics.reset()
-            if batch_idx >= self.len_epoch:
-                break
+                except RuntimeError as e:
+                    if "out of memory" in str(e) and self.skip_oom:
+                        self.logger.warning("OOM on batch. Skipping batch.")
+                        for p in self.model.parameters():
+                            if p.grad is not None:
+                                del p.grad  # free some memory
+                        torch.cuda.empty_cache()
+                        continue
+                    else:
+                        raise e
+                self.train_metrics.update("grad norm", self.get_grad_norm())
+                if batch_idx % self.log_step == 0:
+                    self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
+                    self.logger.debug(
+                        "Train Epoch: {} {} Loss: {:.6f}".format(
+                            epoch, self._progress(batch_idx), batch["loss"].item()
+                        )
+                    )
+                    self.writer.add_scalar(
+                        "learning rate", self.lr_scheduler.get_last_lr()[0]
+                    )
+                    self._log_predictions(**batch)
+                    self._log_spectrogram(batch["spectrogram"])
+                    self._log_scalars(self.train_metrics)
+                    # we don't want to reset train metrics at the start of every epoch
+                    # because we are interested in recent train metrics
+                    last_train_metrics = self.train_metrics.result()
+                    self.train_metrics.reset()
+                if batch_idx >= self.len_epoch:
+                    break
+        except e:
+            print('Error occured:', e)
+
         log = last_train_metrics
 
         for part, dataloader in self.evaluation_dataloaders.items():
