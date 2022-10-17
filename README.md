@@ -16,7 +16,9 @@ Model is ready for inference!
 Train for 63 epochs with config `hw_asr/config.json`
 
 My results on librispeech test-clean:
+
 Mean WER (argmax): 0.312, Mean CER (argmax): 0.096
+
 Mean WER (beam search + lm): 0.152, Mean CER (beam search + lm): 0.064
 
 ## Recommended implementation order
