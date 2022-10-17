@@ -2,11 +2,22 @@
 
 ## Installation guide
 
-< Write your installation guide here >
-
 ```shell
-pip install -r ./requirements.txt
+python -m venv .venv
+source .venv/bin/activate
+pip3 install -r ./requirements.txt
+python3 setup.py
 ```
+
+Model is ready for inference!
+
+## How to reproduce
+
+Train for 63 epochs with config `hw_asr/config.json`
+
+My results on librispeech test-clean:
+Mean WER (argmax): 0.312, Mean CER (argmax): 0.096
+Mean WER (beam search + lm): 0.152, Mean CER (beam search + lm): 0.064
 
 ## Recommended implementation order
 
@@ -27,7 +38,7 @@ the workflow.
 
 ## Before submitting
 
-0) Make sure your projects run on a new machine after complemeting the installation guide or by 
+0) Make sure your projects run on a new machine after complemeting the installation guide or by
    running it in docker container.
 1) Search project for `# TODO: your code here` and implement missing functionality
 2) Make sure all tests work without errors
@@ -55,14 +66,14 @@ of [pytorch-template](https://github.com/victoresque/pytorch-template) repositor
 
 You can use this project with docker. Quick start:
 
-```bash 
-docker build -t my_hw_asr_image . 
+```bash
+docker build -t my_hw_asr_image .
 docker run \
    --gpus '"device=0"' \
    -it --rm \
    -v /path/to/local/storage/dir:/repos/asr_project_template/data/datasets \
    -e WANDB_API_KEY=<your_wandb_api_key> \
-	my_hw_asr_image python -m unittest 
+	my_hw_asr_image python -m unittest
 ```
 
 Notes:
