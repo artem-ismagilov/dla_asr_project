@@ -1,5 +1,7 @@
-from hw_asr.augmentations.spectrogram_augmentations.masking import FrequencyMasking
+from torchaudio.transforms import FrequencyMasking, TimeMasking, TimeStretch
 
 __all__ = [
     "FrequencyMasking",
+    "TimeMasking",
+    "TimeStretch",
 ]

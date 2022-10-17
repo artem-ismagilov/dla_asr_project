@@ -1,5 +1,7 @@
-from hw_asr.augmentations.wave_augmentations.Gain import Gain
+from hw_asr.augmentations.wave_augmentations.transforms import Gain, PolarityInversion, AddColoredNoise
 
 __all__ = [
-    "Gain"
+    "Gain",
+    "PolarityInversion",
+    "AddColoredNoise",
 ]
