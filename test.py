@@ -11,11 +11,12 @@ from hw_asr.trainer import Trainer
 from hw_asr.utils import ROOT_PATH
 from hw_asr.utils.object_loading import get_dataloaders
 from hw_asr.utils.parse_config import ConfigParser
+from hw_asr.metric.utils import calc_wer, calc_cer
 
 DEFAULT_CHECKPOINT_PATH = ROOT_PATH / "default_test_model" / "checkpoint.pth"
 
 
-def main(config, out_file):
+def main(config, out_file, args):
     logger = config.get_logger("test")
 
     # define cpu or gpu if possible
@@ -44,6 +45,8 @@ def main(config, out_file):
 
     results = []
 
+    wers, cers = [], []
+    wers_argmax, cers_argmax = [], []
     with torch.no_grad():
         for batch_num, batch in enumerate(tqdm(dataloaders["test"])):
             batch = Trainer.move_batch_to_device(batch, device)
@@ -56,20 +59,37 @@ def main(config, out_file):
             batch["log_probs_length"] = model.transform_input_lengths(
                 batch["spectrogram_length"]
             )
-            batch["probs"] = batch["log_probs"].exp().cpu()
-            batch["argmax"] = batch["probs"].argmax(-1)
+            batch["argmax"] = batch["log_probs"].argmax(-1)
             for i in range(len(batch["text"])):
                 argmax = batch["argmax"][i]
                 argmax = argmax[: int(batch["log_probs_length"][i])]
+                text_argmax = text_encoder.ctc_decode(argmax.cpu().numpy())
+
+                beam_search_result = text_encoder.ctc_beam_search(
+                    batch["log_probs"][i],
+                    batch["log_probs_length"][i],
+                    beam_size=100,
+                    result_size=args.hyps_size,
+                    impl_type=args.bs_impl_type)
+
+                wers.append(calc_wer(batch["text"][i].strip().lower(), beam_search_result[0].text))
+                cers.append(calc_cer(batch["text"][i].strip().lower(), beam_search_result[0].text))
+
+                wers_argmax.append(calc_wer(batch["text"][i].strip().lower(), text_argmax))
+                cers_argmax.append(calc_cer(batch["text"][i].strip().lower(), text_argmax))
+
                 results.append(
                     {
                         "ground_trurh": batch["text"][i],
-                        "pred_text_argmax": text_encoder.ctc_decode(argmax.cpu().numpy()),
-                        "pred_text_beam_search": text_encoder.ctc_beam_search(
-                            batch["probs"][i], batch["log_probs_length"][i], beam_size=100
-                        )[:10],
+                        "pred_text_argmax": text_argmax,
+                        "pred_text_beam_search": beam_search_result
                     }
                 )
+
+    print()
+    print('Mean WER (argmax): {:.3f}, Mean CER (argmax): {:.3f}'.format(sum(wers_argmax) / len(wers_argmax), sum(cers_argmax) / len(cers_argmax)))
+    print('Mean WER (beam search): {:.3f}, Mean CER (beam search): {:.3f}'.format(sum(wers) / len(wers), sum(cers) / len(cers)))
+
     with Path(out_file).open("w") as f:
         json.dump(results, f, indent=2)
 
@@ -125,6 +145,20 @@ if __name__ == "__main__":
         type=int,
         help="Number of workers for test dataloader",
     )
+    args.add_argument(
+        "-s",
+        "--hyps-size",
+        default=1,
+        type=int,
+        help="Returned hypothesis count",
+    )
+    args.add_argument(
+        "-i",
+        "--bs-impl-type",
+        default='library',
+        type=str,
+        help="Beam search implementation",
+    )
 
     args = args.parse_args()
 
@@ -169,4 +203,4 @@ if __name__ == "__main__":
     config["data"]["test"]["batch_size"] = args.batch_size
     config["data"]["test"]["n_jobs"] = args.jobs
 
-    main(config, args.output)
+    main(config, args.output, args)
